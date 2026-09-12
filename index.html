@@ -221,15 +221,49 @@
       cursor: not-allowed;
     }
 
-    /* 담벼락 그리드 */
+    .wall-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
     .wall-section-title {
       font-size: 17px;
       font-weight: 600;
       color: #4b5563;
-      margin-bottom: 16px;
       display: flex;
       align-items: center;
       gap: 6px;
+    }
+
+    .btn-ai-feedback {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f5f3ff;
+      color: #6d28d9;
+      border: 1px solid #ddd6fe;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 2px rgba(109, 40, 217, 0.05);
+    }
+
+    .btn-ai-feedback:hover:not(:disabled) {
+      background: #ede9fe;
+      border-color: #c4b5fd;
+      transform: translateY(-1px);
+    }
+
+    .btn-ai-feedback:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
     #wall {
@@ -329,6 +363,39 @@
       margin-bottom: 12px;
     }
 
+    /* AI 코멘트 박스 */
+    .ai-comment-box {
+      margin-top: 10px;
+      margin-bottom: 10px;
+      background: #faf5ff;
+      border: 1px solid #e9d5ff;
+      border-radius: 10px;
+      padding: 9px 12px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .ai-comment-tag {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #7c3aed;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .ai-comment-text {
+      color: #4c1d95;
+      line-height: 1.5;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+
     .memo-footer {
       display: flex;
       justify-content: flex-end;
@@ -381,10 +448,18 @@
       </div>
     </div>
 
-    <!-- 담벼락 목록 -->
-    <div class="wall-section-title">
-      <span>남겨진 메모들</span>
+    <!-- 담벼락 상단 헤더 (제목 및 교사용 AI 버튼) -->
+    <div class="wall-header">
+      <div class="wall-section-title">
+        <span>남겨진 메모들</span>
+      </div>
+      <div id="teacherAiArea" style="display: none;">
+        <button id="aiFeedbackBtn" class="btn-ai-feedback" type="button">
+          <span>✨</span> AI 코멘트 남기기
+        </button>
+      </div>
     </div>
+
     <div id="wall">
       <!-- 메모는 app.js가 그립니다 -->
     </div>

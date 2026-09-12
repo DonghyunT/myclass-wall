@@ -16,7 +16,8 @@ import {
   doc,
   query,
   orderBy,
-  onSnapshot
+  onSnapshot,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import {
   getAuth,
@@ -55,7 +56,7 @@ const ADMIN_EMAIL = "adh103006@gmail.com";
 // ===================================================
 
 // 메모를 읽어 옵니다.
-// Firestore에서 작성 시각(createdAt) 순으로 정렬해서 가져옵니다 (uid, authorName 포함).
+// Firestore에서 작성 시각(createdAt) 순으로 정렬해서 가져옵니다 (uid, authorName, aiComment 포함).
 async function loadMemos() {
   const q = query(collection(db, "memos"), orderBy("createdAt", "asc"));
   const querySnapshot = await getDocs(q);
@@ -67,7 +68,8 @@ async function loadMemos() {
       text: data.text,
       createdAt: data.createdAt,
       uid: data.uid || "",
-      authorName: data.authorName || ""
+      authorName: data.authorName || "",
+      aiComment: data.aiComment || ""
     });
   });
   return memos;
@@ -173,6 +175,24 @@ function makeMemo(memo) {
   textDiv.textContent = memo.text;
   div.appendChild(textDiv);
 
+  // 2-1. AI 선생님 코멘트가 있을 경우 표시
+  if (memo.aiComment) {
+    const aiBox = document.createElement("div");
+    aiBox.className = "ai-comment-box";
+
+    const aiTag = document.createElement("div");
+    aiTag.className = "ai-comment-tag";
+    aiTag.innerHTML = `<span>✨</span> AI 선생님의 한마디`;
+    aiBox.appendChild(aiTag);
+
+    const aiText = document.createElement("p");
+    aiText.className = "ai-comment-text";
+    aiText.textContent = memo.aiComment;
+    aiBox.appendChild(aiText);
+
+    div.appendChild(aiBox);
+  }
+
   // 3. 카드 하단 (작성 시각)
   const footer = document.createElement("div");
   footer.className = "memo-footer";
@@ -277,9 +297,15 @@ const userArea = document.getElementById("userArea");
 // 사용자 영역 그리기 (로그인/로그아웃 버튼)
 function renderUserArea(user) {
   userArea.innerHTML = "";
+  const teacherAiArea = document.getElementById("teacherAiArea");
 
   if (user) {
     const isTeacher = user.email === ADMIN_EMAIL;
+
+    // 교사 전용 AI 코멘트 버튼 표시 여부
+    if (teacherAiArea) {
+      teacherAiArea.style.display = isTeacher ? "block" : "none";
+    }
 
     // 사용자 정보 알약 (아바타 + 이름 + 역할 뱃지)
     const pill = document.createElement("div");
@@ -322,6 +348,11 @@ function renderUserArea(user) {
     input.placeholder = "우리 반 친구들과 나눌 메모를 적어보세요 (5~50자, 엔터로 등록)";
     updateCharCount();
   } else {
+    // 교사 전용 AI 코멘트 버튼 숨기기
+    if (teacherAiArea) {
+      teacherAiArea.style.display = "none";
+    }
+
     // 로그아웃된 상태: 구글 로그인 버튼 표시
     const loginBtn = document.createElement("button");
     loginBtn.className = "btn-login";
@@ -361,6 +392,74 @@ onAuthStateChanged(auth, function (user) {
   renderUserArea(user);
   render(); // 로그인 상태에 따라 삭제 버튼 노출 여부 다시 그리기
 });
+
+
+// ===================================================
+// 교사용 AI 피드백 코멘트 생성
+// ===================================================
+
+const aiFeedbackBtn = document.getElementById("aiFeedbackBtn");
+
+if (aiFeedbackBtn) {
+  aiFeedbackBtn.addEventListener("click", async function () {
+    if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
+      alert("AI 코멘트 생성은 선생님(관리자)만 가능합니다.");
+      return;
+    }
+
+    const memos = await loadMemos();
+    if (memos.length === 0) {
+      alert("담벼락에 분석할 메모가 없습니다.");
+      return;
+    }
+
+    const originalText = aiFeedbackBtn.innerHTML;
+    aiFeedbackBtn.disabled = true;
+    aiFeedbackBtn.innerHTML = `<span>⏳</span> AI 코멘트 작성 중...`;
+
+    try {
+      // 개인정보 보호 규칙: 학생 식별 정보(uid, 이메일, 작성자명)는 제외하고 텍스트와 id만 전송합니다.
+      const payload = memos.map((m) => ({ id: m.id, text: m.text }));
+
+      const res = await fetch("/api/gemini", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memos: payload })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `서버 오류 (${res.status})`);
+      }
+
+      const { comments } = await res.json();
+      if (!Array.isArray(comments) || comments.length === 0) {
+        throw new Error("AI로부터 코멘트를 받아오지 못했습니다.");
+      }
+
+      // 각 메모에 Firestore updateDoc 으로 aiComment 필드 기록
+      let count = 0;
+      for (const item of comments) {
+        if (item.id && item.comment) {
+          await updateDoc(doc(db, "memos", item.id), {
+            aiComment: item.comment
+          });
+          count++;
+        }
+      }
+
+      await render();
+      alert(`총 ${count}개의 메모에 AI 선생님의 따뜻한 코멘트가 달렸습니다! ✨`);
+
+    } catch (error) {
+      console.error("AI 코멘트 생성 실패:", error);
+      alert("AI 코멘트 생성 실패: " + error.message);
+    } finally {
+      aiFeedbackBtn.disabled = false;
+      aiFeedbackBtn.innerHTML = originalText;
+    }
+  });
+}
 
 // 첫 화면 그리기
 render();

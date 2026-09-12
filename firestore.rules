@@ -52,7 +52,7 @@ service cloud.firestore {
       // - 학생은 본인 uid로만 생성 가능 (request.resource.data.uid == request.auth.uid)
       allow create: if isAuthenticated()
         && request.resource.data.keys().hasAll(['text', 'createdAt', 'uid'])
-        && request.resource.data.keys().hasOnly(['text', 'createdAt', 'uid', 'authorName'])
+        && request.resource.data.keys().hasOnly(['text', 'createdAt', 'uid', 'authorName', 'aiComment'])
         && request.resource.data.text is string
         && request.resource.data.text.size() >= 5
         && request.resource.data.text.size() <= 50
