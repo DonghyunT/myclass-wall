@@ -67,11 +67,16 @@ async function loadMemos() {
 }
 
 // 메모를 새로 씁니다.
-// Firestore의 'memos' 컬렉션에 새 문서를 추가합니다.
+// Firestore의 'memos' 컬렉션에 새 문서를 추가합니다 (작성자 uid 포함).
 async function addMemo(text) {
+  if (!currentUser) {
+    alert("메모를 작성하려면 먼저 Google 로그인을 해주세요.");
+    return;
+  }
   await addDoc(collection(db, "memos"), {
     text: text,
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    uid: currentUser.uid
   });
 }
 
@@ -104,8 +109,13 @@ function makeMemo(memo) {
   const del = document.createElement("button");
   del.textContent = "×";
   del.addEventListener("click", async function () {
-    await deleteMemo(memo.id);
-    await render();
+    try {
+      await deleteMemo(memo.id);
+      await render();
+    } catch (error) {
+      console.error("삭제 실패:", error);
+      alert("삭제 권한이 없습니다. (본인의 메모만 삭제할 수 있습니다)");
+    }
   });
   div.appendChild(del);
 
