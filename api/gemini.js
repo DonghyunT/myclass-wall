@@ -45,12 +45,15 @@ ${JSON.stringify(sanitizedMemos, null, 2)}
   { "id": "1", "comment": "실험을 스스로 해보며 깨달음을 얻은 점이 참 멋져요!" }
 ]`;
 
-    // 무료 API 티어에서 사용할 수 있는 gemini-2.5-flash 모델 호출
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // 사용자가 요청한 gemini-3.6-flash 모델 호출
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(geminiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey
+      },
       body: JSON.stringify({
         contents: [
           {
@@ -67,8 +70,16 @@ ${JSON.stringify(sanitizedMemos, null, 2)}
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Gemini API 호출 실패:", errorText);
+
+      let hint = "";
+      if (response.status === 404) {
+        hint = " (요청한 gemini-3.6-flash 모델을 찾을 수 없습니다)";
+      } else if (response.status === 401 || response.status === 403) {
+        hint = " (API 키 인증 실패. 유효한 Gemini API 키인지 확인해 주세요)";
+      }
+
       return res.status(response.status).json({
-        error: `Gemini API 호출 오류 (${response.status})`,
+        error: `Gemini API 호출 오류 (${response.status})${hint}`,
         details: errorText
       });
     }

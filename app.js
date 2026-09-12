@@ -429,7 +429,12 @@ if (aiFeedbackBtn) {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || `서버 오류 (${res.status})`);
+        let errMsg = errorData.error || `서버 오류 (${res.status})`;
+        // 로컬 환경(Live Server)에서는 /api/gemini 서버리스 함수를 찾을 수 없어 404 발생
+        if (res.status === 404 && !errorData.error) {
+          errMsg = "로컬 개발 환경(Live Server)에서는 /api/gemini 서버리스 함수를 실행할 수 없습니다(404). Vercel 배포 사이트에서 접속하시거나 Vercel CLI(vercel dev)를 이용해 주세요.";
+        }
+        throw new Error(errMsg);
       }
 
       const { comments } = await res.json();
