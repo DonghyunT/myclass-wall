@@ -14,12 +14,13 @@ service cloud.firestore {
     }
 
     // 교사(teacher) 확인:
-    // 1) users/{uid} 문서의 role이 'teacher'인 경우
-    // 2) auth 토큰 클레임의 role이 'teacher'인 경우
-    // 3) 또는 직접 교사 UID를 추가할 수 있습니다.
+    // 1) 관리자 이메일(adh103006@gmail.com)인 경우
+    // 2) users/{uid} 문서의 role이 'teacher'인 경우
+    // 3) auth 토큰 클레임의 role이 'teacher'인 경우
     function isTeacher() {
       return isAuthenticated() && (
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'teacher')
+        request.auth.token.email == 'adh103006@gmail.com'
+        || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'teacher')
         || (request.auth.token.keys().hasAny(['role']) && request.auth.token.role == 'teacher')
       );
     }
@@ -50,7 +51,8 @@ service cloud.firestore {
       // - 교사는 모든 권한 (자유롭게 생성 가능)
       // - 학생은 본인 uid로만 생성 가능 (request.resource.data.uid == request.auth.uid)
       allow create: if isAuthenticated()
-        && request.resource.data.keys().hasOnly(['text', 'createdAt', 'uid'])
+        && request.resource.data.keys().hasAll(['text', 'createdAt', 'uid'])
+        && request.resource.data.keys().hasOnly(['text', 'createdAt', 'uid', 'authorName'])
         && request.resource.data.text is string
         && request.resource.data.text.size() >= 5
         && request.resource.data.text.size() <= 50
