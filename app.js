@@ -18,6 +18,13 @@ import {
   orderBy,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import {
+  getAuth,
+  signInWithPopup,
+  signOut,
+  GoogleAuthProvider,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 // Firebase 프로젝트 설정
 const firebaseConfig = {
@@ -32,6 +39,11 @@ const firebaseConfig = {
 // Firebase 및 Firestore 초기화
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// Firebase 인증(Auth) 초기화
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+let currentUser = null;
 
 
 // ===================================================
@@ -134,6 +146,57 @@ input.addEventListener("keydown", async function (e) {
 const q = query(collection(db, "memos"), orderBy("createdAt", "asc"));
 onSnapshot(q, function () {
   render();
+});
+
+// ===================================================
+// 로그인 상태 관리 및 화면 표시
+// ===================================================
+
+const userArea = document.getElementById("userArea");
+
+// 사용자 영역 그리기 (로그인/로그아웃 버튼)
+function renderUserArea(user) {
+  userArea.innerHTML = "";
+
+  if (user) {
+    // 로그인된 상태: 사용자 이름과 로그아웃 버튼 표시
+    const greeting = document.createElement("span");
+    greeting.textContent = `${user.displayName || user.email}님 환영합니다!`;
+    userArea.appendChild(greeting);
+
+    const logoutBtn = document.createElement("button");
+    logoutBtn.textContent = "로그아웃";
+    logoutBtn.addEventListener("click", async function () {
+      try {
+        await signOut(auth);
+      } catch (error) {
+        console.error("로그아웃 실패:", error);
+        alert("로그아웃 중 오류가 발생했습니다.");
+      }
+    });
+    userArea.appendChild(logoutBtn);
+  } else {
+    // 로그아웃된 상태: 구글 로그인 버튼 표시
+    const loginBtn = document.createElement("button");
+    loginBtn.textContent = "Google 로그인";
+    loginBtn.addEventListener("click", async function () {
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (error) {
+        console.error("로그인 실패:", error);
+        if (error.code !== "auth/popup-closed-by-user") {
+          alert("로그인 중 오류가 발생했습니다: " + error.message);
+        }
+      }
+    });
+    userArea.appendChild(loginBtn);
+  }
+}
+
+// 로그인 상태 변경 실시간 감지
+onAuthStateChanged(auth, function (user) {
+  currentUser = user;
+  renderUserArea(user);
 });
 
 // 첫 화면 그리기
